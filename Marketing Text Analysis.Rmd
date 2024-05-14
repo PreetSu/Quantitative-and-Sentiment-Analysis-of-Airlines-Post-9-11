@@ -1,0 +1,778 @@
+---
+title: "Text Analysis for all airlines pre 9/11 vs post 9/11"
+author: "Gabby Herrera"
+date: "2024-02-27"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+#Import Libraries
+library(tm)
+library(stringr)
+library(tidytext)
+library(quanteda)
+library(dplyr)
+library(ggplot2)
+library(wordcloud)
+library(RColorBrewer)
+```
+
+UNITED AIRLINES - 1999,2000,2001,2002
+```{r}
+#Upload annual report pdfs
+library(pdftools)
+UAL_1999 <- pdf_text('NYSE_UAL_1999.pdf')
+UAL_2000 <- pdf_text('NYSE_UAL_2000.pdf')
+UAL_2001 <- pdf_text('NYSE_UAL_2001.pdf')
+UAL_2002 <- pdf_text('NYSE_UAL_2002.pdf')
+```
+
+```{r}
+#Preprocessing
+preproc_txt <- function(txt) {
+  txt <- tolower(txt)
+  txt <- gsub("[[:digit:]]", " ", txt)
+  txt <- gsub("[[:punct:]]", " ", txt)
+  txt <- gsub("\\s+", " ", txt)
+  txt <- removeWords(txt, stopwords("en"))
+  return(txt)
+}
+UAL_99 <- preproc_txt(UAL_1999)
+UAL_00 <- preproc_txt(UAL_2000)
+UAL_01 <- preproc_txt(UAL_2001)
+UAL_02 <- preproc_txt(UAL_2002)
+```
+
+```{r}
+#Transform Texts
+transform<- function(txt){
+  corpus <- Corpus(VectorSource(txt))
+  dtm <- DocumentTermMatrix(corpus)
+}
+trans_UAL_99<-transform(UAL_99)
+trans_UAL_00<-transform(UAL_00)
+trans_UAL_01<-transform(UAL_01)
+trans_UAL_02<-transform(UAL_02)
+```
+
+```{r} 
+#Define words of interest
+WOI <- c("attacks", "terrorist", "terrorism", "death", "safety", "security", "hijacking")
+
+# Create function to count frequencies
+counting <- function(data) {
+  total_freq <- colSums(as.matrix(data))
+  sorted_terms <- sort(names(total_freq))
+  COI <- total_freq[WOI]
+  
+  # Set count to zero for words not present in the data
+  COI[is.na(COI)] <- 0
+  
+  return(COI)
+}
+
+# Apply counting function for each year's data
+counting(trans_UAL_99)
+counting(trans_UAL_00)
+counting(trans_UAL_01)
+counting(trans_UAL_02)
+```
+
+```{r}
+COI_99 <- counting(trans_UAL_99)
+COI_00 <- counting(trans_UAL_00)
+COI_01 <- counting(trans_UAL_01)
+COI_02 <- counting(trans_UAL_02)
+
+# Combine the data
+combined_data_UAL <- rbind(COI_99, COI_00, COI_01, COI_02)
+```
+
+```{r}
+# Define the y-axis limit
+y_axis_limit <- 500
+
+# Create bar plot with terms on x-axis and different colors for each year
+barplot(combined_data_UAL, 
+        main = "United Airlines Text Analysis", 
+        ylab = "Frequency", 
+        xlab = "Terms", 
+        beside = TRUE, 
+        col = c("skyblue", "lightgreen", "pink", "orange"),
+        legend.text = c("1999", "2000", "2001", "2002"), 
+        args.legend = list(x = "topright"), 
+        names.arg = WOI,
+        cex.names = 0.8,
+        ylim = c(0, y_axis_limit))
+```
+
+```{r}
+#Function to sum the frequencies of key words and count total words
+counting <- function(data) {
+  total_freq <- colSums(as.matrix(data), na.rm = TRUE)
+  sorted_terms <- sort(names(total_freq))
+  WOI <- c("attacks", "terrorist", "terrorism", "death", "safety", "security", "hijacking")
+  COI_UAL <- total_freq[WOI]
+  total_words <- sum(COI_UAL, na.rm = TRUE)
+  
+  # Check for NA values in total_words
+  if (is.na(total_words)) {
+    warning("Total word count is NA. Check the input data for missing values.")
+  }
+  
+  return(list(words = COI_UAL, total_words = total_words))
+}
+```
+
+```{r}
+# Apply the counting function to each year's data
+result_99 <- counting(trans_UAL_99)
+result_00 <- counting(trans_UAL_00)
+result_01 <- counting(trans_UAL_01)
+result_02 <- counting(trans_UAL_02)
+
+print(result_99)
+print(result_00)
+print(result_01)
+print(result_02)
+```
+
+```{r}
+# Total count of words for each year UAL
+total_words_99 <- result_99$total_words
+total_words_00 <- result_00$total_words
+total_words_01 <- result_01$total_words
+total_words_02 <- result_02$total_words
+
+cat("Total count of words for 1999:", total_words_99, "\n")
+cat("Total count of words for 2000:", total_words_00, "\n")
+cat("Total count of words for 2001:", total_words_01, "\n")
+cat("Total count of words for 2002:", total_words_02, "\n")
+```
+
+```{r}
+#Combine total words
+year_data <- data.frame(
+  Year = c("1999", "2000", "2001", "2002"),
+  Total_Words = c(total_words_99, total_words_00, total_words_01, total_words_02)
+)
+
+# Create bar plot
+barplot(year_data$Total_Words, 
+        main = "United: Total Word Count by Year",
+        xlab = "Year",
+        ylab = "Total Word Count",
+        names.arg = year_data$Year,
+        col = "skyblue"
+)
+```
+
+AMERICAN AIRLINES - 1999,200,2001,2002
+```{r}
+#Upload Annual report pdfs
+AA_1999 <- pdf_text('NASDAQ_AAL_1999.pdf')
+AA_2000 <- pdf_text('NASDAQ_AAL_2000.pdf')
+AA_2001 <- pdf_text('NASDAQ_AAL_2001.pdf')
+AA_2002 <- pdf_text('NASDAQ_AAL_2002.pdf')
+```
+
+```{r}
+#Preprocessing
+preproc_txt <- function(txt) {
+  txt <- tolower(txt)
+  txt <- gsub("[[:digit:]]", " ", txt)
+  txt <- gsub("[[:punct:]]", " ", txt)
+  txt <- gsub("\\s+", " ", txt)
+  txt <- removeWords(txt, stopwords("en"))
+  return(txt)
+}
+AA_99 <- preproc_txt(AA_1999)
+AA_00 <- preproc_txt(AA_2000)
+AA_01 <- preproc_txt(AA_2001)
+AA_02 <- preproc_txt(AA_2002)
+```
+
+```{r}
+#Transform texts
+transform<- function(txt){
+  corpus <- Corpus(VectorSource(txt))
+  dtm <- DocumentTermMatrix(corpus)
+}
+trans_AA_99<-transform(AA_99)
+trans_AA_00<-transform(AA_00)
+trans_AA_01<-transform(AA_01)
+trans_AA_02<-transform(AA_02)
+```
+
+```{r} 
+#Define words of interest
+WOI <- c("attacks", "terrorist", "terrorism", "death", "safety", "security", "hijacking")
+
+# Create function to count frequencies
+counting <- function(data) {
+  total_freq <- colSums(as.matrix(data))
+  sorted_terms <- sort(names(total_freq))
+  COI_AA <- total_freq[WOI]
+  
+  # Set count to zero for words not present in the data
+  COI_AA[is.na(COI_AA)] <- 0
+  
+  return(COI_AA)
+}
+
+# Apply counting function for each year's data
+counting(trans_AA_99)
+counting(trans_AA_00)
+counting(trans_AA_01)
+counting(trans_AA_02)
+```
+
+```{r}
+COI_AA_99 <- counting(trans_AA_99)
+COI_AA_00 <- counting(trans_AA_00)
+COI_AA_01 <- counting(trans_AA_01)
+COI_AA_02 <- counting(trans_AA_02)
+
+#Combine the data
+combined_data_AA <- rbind(COI_AA_99,COI_AA_00,COI_AA_01,COI_AA_02)
+```
+
+```{r}
+# Define the y-axis limit
+y_axis_limit <- 500
+
+# Create bar plot with terms on x-axis and different colors for each year
+barplot(combined_data_AA, 
+        main = "American Airlines Text Analysis", 
+        ylab = "Frequency", 
+        xlab = "Terms", 
+        beside = TRUE, 
+        col = c("skyblue", "lightgreen", "pink", "orange"),
+        legend.text = c("1999", "2000", "2001", "2002"), 
+        args.legend = list(x = "topright"), 
+        names.arg = WOI,
+        cex.names = 0.8,
+        ylim = c(0, y_axis_limit))
+```
+
+```{r}
+counting <- function(data, words_of_interest) {
+  total_freq <- colSums(as.matrix(data))
+  WOI <- c("attacks", "terrorist", "terrorism", "death", "safety", "security", "crisis", "hijacking")
+  COI_AA <- total_freq[WOI]
+  
+  # Set count to zero for words not present in the data
+  COI_AA[is.na(COI_AA)] <- 0
+  
+  # Calculate total count of words
+  total_words <- sum(COI_AA)
+  
+  return(list(words = COI_AA, total_words = total_words))
+}
+```
+
+```{r}
+result_99 <- counting(trans_AA_99)
+result_00 <- counting(trans_AA_00)
+result_01 <- counting(trans_AA_01)
+result_02 <- counting(trans_AA_02)
+
+# Print total number of words per year
+print(result_99)
+print(result_00)
+print(result_01)
+print(result_02)
+```
+
+```{r}
+# Total count of words for each year AA
+AAtotal_words_99 <- result_99$total_words
+AAtotal_words_00 <- result_00$total_words
+AAtotal_words_01 <- result_01$total_words
+AAtotal_words_02 <- result_02$total_words
+
+cat("Total count of words for 1999:", AAtotal_words_99, "\n")
+cat("Total count of words for 2000:", AAtotal_words_00, "\n")
+cat("Total count of words for 2001:", AAtotal_words_01, "\n")
+cat("Total count of words for 2002:", AAtotal_words_02, "\n")
+```
+
+```{r}
+year_data <- data.frame(
+  Year = c("1999", "2000", "2001", "2002"),
+  Total_Words = c(AAtotal_words_99, AAtotal_words_00, AAtotal_words_01, AAtotal_words_02)
+)
+
+# Create bar plot
+barplot(year_data$Total_Words, 
+        main = "American: Total Word Count by Year",
+        xlab = "Year",
+        ylab = "Total Word Count",
+        names.arg = year_data$Year,
+        col = "pink"
+)
+```
+
+COMBINE UAL & AA
+```{r}
+# Combine total counts for both UAL and AA
+total_words_UAL <- c(total_words_99, total_words_00, total_words_01, total_words_02)
+total_words_AA <- c(AAtotal_words_99, AAtotal_words_00, AAtotal_words_01, AAtotal_words_02)
+
+# Sum the total counts for each year
+total_words_combined1 <- total_words_UAL + total_words_AA
+
+names_years <- c("1999", "2000", "2001", "2002")
+
+# Create a bar plot with combined counts
+barplot(total_words_combined1, 
+        main = "United + American Airlines: Total Count of Words for Each Year", 
+        xlab = "Year", 
+        ylab = "Frequency",
+        col = "blue",
+        legend.text = "Total",
+        args.legend = list(x = "topright"),
+        beside = TRUE,
+        names.arg = names_years)
+```
+
+STACKED BAR CHART 
+
+```{r}
+# Combine total counts for both UAL and AA
+total_words_UAL <- c(total_words_99, total_words_00, total_words_01, total_words_02)
+total_words_AA <- c(AAtotal_words_99, AAtotal_words_00, AAtotal_words_01, AAtotal_words_02)
+
+# Create a matrix with UAL and AA counts as two rows
+total_words_combined <- rbind(total_words_UAL, total_words_AA)
+
+names_years <- c("1999", "2000", "2001", "2002")
+
+# Create a stacked bar plot
+barplot(total_words_combined, 
+        main = "United + American Airlines: Total Count of Words for Each Year", 
+        xlab = "Year", 
+        ylab = "Frequency",
+        col = c("blue", "red"),
+        legend.text = c("UAL", "AA"),
+        args.legend = list(x = "topright"),
+        beside = TRUE,
+        names.arg = names_years)
+```
+
+
+
+```{r}
+preprocess_text <- function(txt) {
+  txt <- tolower(txt)
+  txt <- removePunctuation(txt)
+  txt <- removeNumbers(txt)
+  txt <- removeWords(txt, stopwords("en"))
+  txt <- stemDocument(txt)
+  return(txt)
+}
+
+# Function to extract text from PDF
+extract_text <- function(pdf_file) {
+  txt <- pdf_text(pdf_file)
+  return(txt)
+}
+
+# Paths to PDF files
+pdf_files <- c('NYSE_UAL_2001.pdf', 'ar2001.pdf')
+
+# Extract text from each PDF
+pdf_text <- lapply(pdf_files, extract_text)
+
+# Preprocess the text
+preprocessed_text <- lapply(pdf_text, preprocess_text)
+
+# Combine text into a single corpus
+corpus <- Corpus(VectorSource(unlist(preprocessed_text)))
+
+# Create a document-term matrix
+dtm <- DocumentTermMatrix(corpus)
+
+# Convert DTM to a matrix
+mat <- as.matrix(dtm)
+
+# Calculate word frequencies
+word_freq <- colSums(mat)
+
+# Generate word cloud
+wordcloud(names(word_freq), word_freq)
+```
+
+
+DELTA AIRLINES - 1999,200,2001,2002
+
+```{r}
+DA_1999 <- pdf_text('NYSE_DAL_1999.pdf')
+DA_2000 <- pdf_text('NYSE_DAL_2000.pdf')
+DA_2001 <- pdf_text('NYSE_DAL_2001.pdf')
+DA_2002 <- pdf_text('NYSE_DAL_2002.pdf')
+```
+
+```{r}
+preproc_txt <- function(txt) {
+  txt <- tolower(txt)
+  txt <- gsub("[[:digit:]]", " ", txt)
+  txt <- gsub("[[:punct:]]", " ", txt)
+  txt <- gsub("\\s+", " ", txt)
+  txt <- removeWords(txt, stopwords("en"))
+  return(txt)
+}
+DA_99 <- preproc_txt(DA_1999)
+DA_00 <- preproc_txt(DA_2000)
+DA_01 <- preproc_txt(DA_2001)
+DA_02 <- preproc_txt(DA_2002)
+```
+
+```{r}
+transform<- function(txt){
+  corpus <- Corpus(VectorSource(txt))
+  dtm <- DocumentTermMatrix(corpus)
+}
+trans_DA_99<-transform(DA_99)
+trans_DA_00<-transform(DA_00)
+trans_DA_01<-transform(DA_01)
+trans_DA_02<-transform(DA_02)
+```
+
+```{r}
+#Define words of interest
+WOI <- c("attacks", "terrorist", "terrorism", "death", "safety", "security", "hijacking")
+
+# Create function to count frequencies
+counting <- function(data) {
+  total_freq <- colSums(as.matrix(data))
+  sorted_terms <- sort(names(total_freq))
+  COI_DA <- total_freq[WOI]
+  
+  # Set count to zero for words not present in the data
+  COI_DA[is.na(COI_DA)] <- 0
+  
+  return(COI_DA)
+}
+
+# Apply counting function for each year's data
+counting(trans_DA_99)
+counting(trans_DA_00)
+counting(trans_DA_01)
+counting(trans_DA_02)
+```
+
+```{r}
+COI_DA_99 <- counting(trans_DA_99)
+COI_DA_00 <- counting(trans_DA_00)
+COI_DA_01 <- counting(trans_DA_01)
+COI_DA_02 <- counting(trans_DA_02)
+
+#Combine the data
+combined_data_DA <- rbind(COI_DA_99,COI_DA_00,COI_DA_01,COI_DA_02)
+```
+
+```{r}
+# Define the y-axis limit
+y_axis_limit <- 200
+
+# Create bar plot with terms on x-axis and different colors for each year
+barplot(combined_data_DA, 
+        main = "Delta Airlines Text Analysis", 
+        ylab = "Frequency", 
+        xlab = "Terms", 
+        beside = TRUE, 
+        col = c("skyblue", "lightgreen", "pink", "orange"),
+        legend.text = c("1999", "2000", "2001", "2002"), 
+        args.legend = list(x = "topright"), 
+        names.arg = WOI,
+        cex.names = 0.8,
+        ylim = c(0, y_axis_limit))
+```
+
+```{r}
+counting <- function(data, words_of_interest) {
+  total_freq <- colSums(as.matrix(data))
+  WOI <- c("attacks", "terrorist", "terrorism", "death", "safety", "security", "crisis", "hijacking")
+  COI_DA <- total_freq[WOI]
+  
+  # Set count to zero for words not present in the data
+  COI_DA[is.na(COI_DA)] <- 0
+  
+  # Calculate total count of words
+  total_words <- sum(COI_DA)
+  
+  return(list(words = COI_DA, total_words = total_words))
+}
+```
+
+```{r}
+result_99 <- counting(trans_DA_99)
+result_00 <- counting(trans_DA_00)
+result_01 <- counting(trans_DA_01)
+result_02 <- counting(trans_DA_02)
+
+# Print total number of words per year
+print(result_99)
+print(result_00)
+print(result_01)
+print(result_02)
+```
+
+```{r}
+# Total count of words for each year DA
+DAtotal_words_99 <- result_99$total_words
+DAtotal_words_00 <- result_00$total_words
+DAtotal_words_01 <- result_01$total_words
+DAtotal_words_02 <- result_02$total_words
+
+cat("Total count of words for 1999:", DAtotal_words_99, "\n")
+cat("Total count of words for 2000:", DAtotal_words_00, "\n")
+cat("Total count of words for 2001:", DAtotal_words_01, "\n")
+cat("Total count of words for 2002:", DAtotal_words_02, "\n")
+```
+
+```{r}
+year_data <- data.frame(
+  Year = c("1999", "2000", "2001", "2002"),
+  Total_Words = c(DAtotal_words_99, DAtotal_words_00, DAtotal_words_01, DAtotal_words_02)
+)
+
+# Create bar plot
+barplot(year_data$Total_Words, 
+        main = "Delta: Total Word Count by Year",
+        xlab = "Year",
+        ylab = "Total Word Count",
+        names.arg = year_data$Year,
+        col ="orange"
+)
+```
+
+SOUTHWEST AIRLINES - 1999,200,2001,2002
+```{r}
+SW_1999 <- pdf_text('ar-1999.pdf')
+SW_2000 <- pdf_text('ar-2000.pdf')
+SW_2001 <- pdf_text('ar-2001.pdf')
+SW_2002 <- pdf_text('ar-2002.pdf')
+```
+
+```{r}
+preproc_txt <- function(txt) {
+  txt <- tolower(txt)
+  txt <- gsub("[[:digit:]]", " ", txt)
+  txt <- gsub("[[:punct:]]", " ", txt)
+  txt <- gsub("\\s+", " ", txt)
+  txt <- removeWords(txt, stopwords("en"))
+  return(txt)
+}
+SW_99 <- preproc_txt(SW_1999)
+SW_00 <- preproc_txt(SW_2000)
+SW_01 <- preproc_txt(SW_2001)
+SW_02 <- preproc_txt(SW_2002)
+```
+
+```{r}
+transform<- function(txt){
+  corpus <- Corpus(VectorSource(txt))
+  dtm <- DocumentTermMatrix(corpus)
+}
+trans_SW_99<-transform(SW_99)
+trans_SW_00<-transform(SW_00)
+trans_SW_01<-transform(SW_01)
+trans_SW_02<-transform(SW_02)
+```
+
+```{r}
+#Define words of interest
+WOI <- c("attacks", "terrorist", "terrorism", "death", "safety", "security", "hijacking")
+
+# Create function to count frequencies
+counting <- function(data) {
+  total_freq <- colSums(as.matrix(data))
+  sorted_terms <- sort(names(total_freq))
+  COI_SW <- total_freq[WOI]
+  
+  # Set count to zero for words not present in the data
+  COI_SW[is.na(COI_SW)] <- 0
+  
+  return(COI_SW)
+}
+
+# Apply counting function for each year's data
+counting(trans_SW_99)
+counting(trans_SW_00)
+counting(trans_SW_01)
+counting(trans_SW_02)
+```
+
+```{r}
+COI_SW_99 <- counting(trans_SW_99)
+COI_SW_00 <- counting(trans_SW_00)
+COI_SW_01 <- counting(trans_SW_01)
+COI_SW_02 <- counting(trans_SW_02)
+
+#Combine the data
+combined_data_SW <- rbind(COI_SW_99,COI_SW_00,COI_SW_01,COI_SW_02)
+```
+
+```{r}
+y_axis_limit <- 200
+
+# Create bar plot with terms on x-axis and different colors for each year
+barplot(combined_data_SW, 
+        main = "SouthWest Airlines Text Analysis", 
+        ylab = "Frequency", 
+        xlab = "Terms", 
+        beside = TRUE, 
+        col = c("skyblue", "lightgreen", "pink", "orange"),
+        legend.text = c("1999", "2000", "2001", "2002"), 
+        args.legend = list(x = "topright"), 
+        names.arg = WOI, 
+        cex.names = 0.8,
+        ylim = c(0, y_axis_limit))
+```
+
+```{r}
+counting <- function(data, words_of_interest) {
+  total_freq <- colSums(as.matrix(data))
+  WOI <- c("attacks", "terrorist", "terrorism", "death", "safety", "security", "crisis", "hijacking")
+  COI_SW <- total_freq[WOI]
+  
+  # Set count to zero for words not present in the data
+  COI_SW[is.na(COI_SW)] <- 0
+  
+  # Calculate total count of words
+  total_words <- sum(COI_SW)
+  
+  return(list(words = COI_SW, total_words = total_words))
+}
+```
+
+```{r}
+result_99 <- counting(trans_SW_99)
+result_00 <- counting(trans_SW_00)
+result_01 <- counting(trans_SW_01)
+result_02 <- counting(trans_SW_02)
+
+# Print total number of words per year
+print(result_99)
+print(result_00)
+print(result_01)
+print(result_02)
+```
+
+```{r}
+# Total count of words for each year DA
+SWtotal_words_99 <- result_99$total_words
+SWtotal_words_00 <- result_00$total_words
+SWtotal_words_01 <- result_01$total_words
+SWtotal_words_02 <- result_02$total_words
+
+cat("Total count of words for 1999:", SWtotal_words_99, "\n")
+cat("Total count of words for 2000:", SWtotal_words_00, "\n")
+cat("Total count of words for 2001:", SWtotal_words_01, "\n")
+cat("Total count of words for 2002:", SWtotal_words_02, "\n")
+```
+```{r}
+year_data <- data.frame(
+  Year = c("1999", "2000", "2001", "2002"),
+  Total_Words = c(SWtotal_words_99, SWtotal_words_00, SWtotal_words_01, SWtotal_words_02)
+)
+
+# Create bar plot
+barplot(year_data$Total_Words, 
+        main = "SouthWest: Total Word Count by Year",
+        xlab = "Year",
+        ylab = "Total Word Count",
+        names.arg = year_data$Year,
+        col ="darkgreen"
+)
+```
+
+```{r}
+# Combine total counts for both DA and SW
+total_words_DA <- c(DAtotal_words_99, DAtotal_words_00, DAtotal_words_01,DAtotal_words_02)
+total_words_SW <- c(SWtotal_words_99, SWtotal_words_00, SWtotal_words_01, SWtotal_words_02)
+
+# Sum the total counts for each year
+total_words_combined2 <- total_words_DA + total_words_SW
+
+names_years <- c("1999", "2000", "2001", "2002")
+
+# Create a bar plot with combined counts
+barplot(total_words_combined2, 
+        main = "Delta + Southwest: Total Count of Words for Each Year", 
+        xlab = "Year", 
+        ylab = "Frequency",
+        col = "Pink",
+        legend.text = "Total",
+        args.legend = list(x = "topright"),
+        beside = TRUE,
+        names.arg = names_years,
+        ylim = c(0, 500))
+```
+
+
+```{r}
+# Set the y-axis limit to 700
+ylim <- c(0, 700)
+
+# Calculate the position of the bars for Delta + Southwest
+positions <- 1:length(total_words_combined1)
+par(mar = c(6, 5, 4, 5) + 0.1)
+
+# Create the bar plot with ylim argument
+barplot(rbind(total_words_combined1, total_words_combined2), 
+        main = "United + American VS Delta + Southwest: Total Count of Words for Each Year", 
+        xlab = "Year", 
+        ylab = "Frequency",
+        col = c("blue", "pink"),
+        beside = TRUE,
+        width = bar_width,
+        legend.text = c("United + American", "Delta + Southwest"),
+        args.legend = list(x = "topright"),
+        axis.lty = 1, 
+        names.arg = names_years,
+        ylim = ylim)
+```
+
+```{r}
+preprocess_text <- function(txt) {
+  txt <- tolower(txt)
+  txt <- removePunctuation(txt)
+  txt <- removeNumbers(txt)
+  txt <- removeWords(txt, stopwords("en"))
+  return(txt)
+}
+
+# Function to extract text from PDF
+extract_text <- function(pdf_file) {
+  txt <- pdf_text(pdf_file)
+  return(txt)
+}
+
+# Paths to PDF files
+pdf_files <- c('NYSE_DAL_2001.pdf', 'ar-2001.pdf')
+
+# Extract text from each PDF
+pdf_text <- lapply(pdf_files, extract_text)
+
+# Preprocess the text
+preprocessed_text <- lapply(pdf_text, preprocess_text)
+
+# Combine text into a single corpus
+corpus <- Corpus(VectorSource(unlist(preprocessed_text)))
+
+# Create a document-term matrix
+dtm <- DocumentTermMatrix(corpus)
+
+# Convert DTM to a matrix
+mat <- as.matrix(dtm)
+
+# Calculate word frequencies
+word_freq <- colSums(mat)
+
+# Generate word cloud
+wordcloud(names(word_freq), word_freq)
+```
+
